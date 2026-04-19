@@ -41,14 +41,29 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .background(
-            LinearGradient(
-                colors: [
-                    Color(nsColor: .windowBackgroundColor),
-                    Color(red: 0.95, green: 0.97, blue: 0.99),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(nsColor: .windowBackgroundColor),
+                        Color(red: 0.96, green: 0.97, blue: 0.99),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                Circle()
+                    .fill(Color.accentColor.opacity(0.08))
+                    .frame(width: 420, height: 420)
+                    .blur(radius: 110)
+                    .offset(x: -320, y: -280)
+
+                Circle()
+                    .fill(Color.green.opacity(0.06))
+                    .frame(width: 360, height: 360)
+                    .blur(radius: 120)
+                    .offset(x: 320, y: 420)
+            }
+            .ignoresSafeArea()
         )
         .fileImporter(
             isPresented: $viewModel.isImporterPresented,
@@ -68,6 +83,10 @@ struct ContentView: View {
 
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Label("分析面板", systemImage: "waveform.path.ecg.rectangle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
             Text("Benford 定律快速检测")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
 
@@ -82,12 +101,10 @@ struct ContentView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(viewModel.isDropTargeted ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 2)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background {
+            surfacePanel(cornerRadius: 32, tint: Color.accentColor.opacity(0.08))
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .onDrop(of: [.fileURL], isTargeted: $viewModel.isDropTargeted) { providers in
             viewModel.handleDroppedProviders(providers)
         }
@@ -111,7 +128,9 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
         }
         .padding(20)
-        .background(cardBackground)
+        .background {
+            surfacePanel(cornerRadius: 28, tint: Color.primary.opacity(0.04))
+        }
     }
 
     private var progressSection: some View {
@@ -129,7 +148,9 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(20)
-        .background(cardBackground)
+        .background {
+            surfacePanel(cornerRadius: 28, tint: Color.primary.opacity(0.04))
+        }
     }
 
     private func summarySection(outcome: AnalysisOutcome) -> some View {
@@ -148,7 +169,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("检测结论")
+                        Label("检测结论", systemImage: conclusion.symbol)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Text(conclusion.title)
@@ -171,24 +192,24 @@ struct ContentView: View {
 
             LazyVGrid(
                 columns: [
-                    GridItem(.adaptive(minimum: 150), spacing: 12),
+                    GridItem(.adaptive(minimum: 160), spacing: 14),
                 ],
-                spacing: 12
+                spacing: 14
             ) {
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.title)
-                            .font(.subheadline)
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Text(item.value)
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .font(.system(size: 24, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.primary.opacity(0.04))
-                    )
+                    .padding(18)
+                    .background {
+                        insetTile(tint: .primary.opacity(0.03))
+                    }
                 }
             }
 
@@ -201,54 +222,46 @@ struct ContentView: View {
             }
         }
         .padding(20)
-        .background(cardBackground)
+        .background {
+            surfacePanel(cornerRadius: 30)
+        }
     }
 
     private func chartSection(result: BenfordAnalysisResult) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("1-9 偏差柱状图")
-                .font(.headline)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Label("偏差分布", systemImage: "chart.bar.xaxis")
+                    .font(.headline)
 
-            Chart {
-                ForEach(viewModel.digitRows) { row in
-                    BarMark(
-                        x: .value("首位数字", String(row.digit)),
-                        y: .value("偏差百分点", row.deviation * 100)
-                    )
-                    .foregroundStyle(row.deviation >= 0 ? Color(red: 0.18, green: 0.58, blue: 0.38) : Color(red: 0.86, green: 0.31, blue: 0.28))
-                    .cornerRadius(4)
-                }
-                RuleMark(y: .value("Zero", 0))
-                    .foregroundStyle(Color.secondary.opacity(0.4))
+                Spacer(minLength: 16)
+
+                Text("图表和明细共用同一组 1-9 首位数字分布")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .chartXAxisLabel("首位数字")
-            .chartYAxisLabel("偏差（百分点）")
-            .chartOverlay { _ in }
-            .frame(height: 260)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.primary.opacity(0.02))
-            )
 
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
-                GridRow {
-                    headerCell("首位数字")
-                    headerCell("理论占比")
-                    headerCell("实际占比")
-                    headerCell("偏差")
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 24) {
+                    chartVisualizationPanel
+                        .frame(minWidth: 500, idealWidth: 560)
+
+                    subtleDivider(vertical: true)
+
+                    distributionTablePanel
+                        .frame(minWidth: 320, idealWidth: 340)
                 }
-                ForEach(viewModel.digitRows) { row in
-                    GridRow {
-                        bodyCell("\(row.digit)")
-                        bodyCell(percent(row.expectedRatio))
-                        bodyCell(percent(row.observedRatio))
-                        bodyCell(signedPercent(row.deviation))
-                    }
+
+                VStack(alignment: .leading, spacing: 18) {
+                    chartVisualizationPanel
+                    subtleDivider()
+                    distributionTablePanel
                 }
             }
         }
         .padding(20)
-        .background(cardBackground)
+        .background {
+            surfacePanel(cornerRadius: 30)
+        }
     }
 
     private func statusBadge(_ status: BenfordStatus) -> some View {
@@ -285,10 +298,9 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
+        .background {
+            insetTile(tint: .primary.opacity(0.02))
+        }
     }
 
     private func messageCard(title: String, message: String, tint: Color) -> some View {
@@ -300,7 +312,9 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(20)
-        .background(cardBackground)
+        .background {
+            surfacePanel(cornerRadius: 28, tint: tint.opacity(0.06))
+        }
     }
 
     private func headerCell(_ text: String) -> some View {
@@ -314,10 +328,6 @@ struct ContentView: View {
         Text(text)
             .monospacedDigit()
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var cardBackground: some ShapeStyle {
-        .regularMaterial
     }
 
     private var dropZoneOverlay: some View {
@@ -378,9 +388,10 @@ struct ContentView: View {
             }
 
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(viewModel.isDropTargeted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                .fill(viewModel.isDropTargeted ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.03))
                 .overlay(dropZoneOverlay)
                 .frame(height: 160)
+                .shadow(color: viewModel.isDropTargeted ? Color.accentColor.opacity(0.12) : .clear, radius: 18, y: 8)
         }
     }
 
@@ -408,22 +419,40 @@ struct ContentView: View {
 
                 Spacer(minLength: 16)
 
-                Button("更换文件") {
-                    viewModel.presentImporter()
+                VStack(spacing: 8) {
+                    Button {
+                        viewModel.presentImporter()
+                    } label: {
+                        Text("更换文件")
+                            .frame(width: compactImporterActionWidth)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.down.doc")
+                        Text("也可拖拽替换")
+                    }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(viewModel.isDropTargeted ? Color.accentColor : .secondary)
+                        .frame(width: compactImporterActionWidth)
+                        .padding(.vertical, 6)
+                        .background(
+                            (viewModel.isDropTargeted ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.04)),
+                            in: Capsule()
+                        )
                 }
-                .buttonStyle(.borderedProminent)
+                .frame(width: compactImporterActionWidth)
             }
 
             HStack(spacing: 8) {
                 featureTag("整体矩阵一次计算")
                 featureTag("导入后自动更新结果")
-                featureTag("支持拖拽替换")
             }
         }
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
+                .fill(Color.primary.opacity(0.03))
         )
     }
 
@@ -444,12 +473,16 @@ struct ContentView: View {
         }
     }
 
+    private var compactImporterActionWidth: CGFloat {
+        148
+    }
+
     private func featureTag(_ text: String) -> some View {
         Text(text)
             .font(.caption.weight(.medium))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.primary.opacity(0.06), in: Capsule())
+            .background(Color.primary.opacity(0.05), in: Capsule())
             .foregroundStyle(.secondary)
     }
 
@@ -459,7 +492,8 @@ struct ContentView: View {
                 title: "没有可用于 Benford 检测的非零数值",
                 message: "这张表已经完成摘要统计，但没有可参与 Benford 计算的非零数值，因此当前不能给出“符合 / 不符合”的统计结论。",
                 tint: .orange,
-                badgeText: "无可用样本"
+                badgeText: "无可用样本",
+                symbol: "exclamationmark.circle"
             )
         }
 
@@ -472,23 +506,151 @@ struct ContentView: View {
                 title: "整体符合 Benford 定律",
                 message: "\(stats) 当前样本的首位数字分布与理论分布非常接近，\(chiSquareMessage)",
                 tint: .green,
-                badgeText: "符合"
+                badgeText: "符合",
+                symbol: "checkmark.seal"
             )
         case .borderline:
             return ConclusionPresentation(
                 title: "当前结果处于边界状态",
                 message: "\(stats) 当前样本接近阈值，建议结合业务背景和数据来源一起复核。\(chiSquareMessage)",
                 tint: .orange,
-                badgeText: "边界"
+                badgeText: "边界",
+                symbol: "exclamationmark.triangle"
             )
         case .nonConforms:
             return ConclusionPresentation(
                 title: "整体偏离 Benford 定律",
                 message: "\(stats) 当前样本与理论分布差异较大，建议进一步检查数据来源、口径和异常值。\(chiSquareMessage)",
                 tint: .red,
-                badgeText: "不符合"
+                badgeText: "不符合",
+                symbol: "xmark.octagon"
             )
         }
+    }
+
+    private var chartVisualizationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("1-9 偏差柱状图")
+                    .font(.subheadline.weight(.semibold))
+                Text("纵轴展示的是实际占比减去理论占比后的百分点差值。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Chart {
+                ForEach(viewModel.digitRows) { row in
+                    BarMark(
+                        x: .value("首位数字", String(row.digit)),
+                        y: .value("偏差百分点", row.deviation * 100)
+                    )
+                    .foregroundStyle(row.deviation >= 0 ? Color(red: 0.16, green: 0.56, blue: 0.38) : Color(red: 0.80, green: 0.30, blue: 0.28))
+                    .cornerRadius(6)
+                }
+
+                RuleMark(y: .value("Zero", 0))
+                    .foregroundStyle(Color.secondary.opacity(0.55))
+            }
+            .chartXAxisLabel("首位数字")
+            .chartYAxisLabel("偏差（百分点）")
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
+                        .foregroundStyle(Color.secondary.opacity(0.18))
+                    AxisValueLabel()
+                }
+            }
+            .frame(height: 310)
+        }
+    }
+
+    private var distributionTablePanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("分布明细")
+                    .font(.subheadline.weight(.semibold))
+                Text("用明细表快速核对每个首位数字的理论占比、实际占比和偏差。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 0) {
+                tableHeaderCell("首位数字")
+                tableHeaderCell("理论占比")
+                tableHeaderCell("实际占比")
+                tableHeaderCell("偏差")
+            }
+
+            VStack(spacing: 6) {
+                ForEach(Array(viewModel.digitRows.enumerated()), id: \.element.id) { index, row in
+                    distributionRow(row, index: index)
+                }
+            }
+        }
+    }
+
+    private func surfacePanel(cornerRadius: CGFloat, tint: Color = .clear) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(tint)
+            }
+            .shadow(color: Color.black.opacity(0.035), radius: 18, y: 10)
+    }
+
+    private func insetTile(tint: Color) -> some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(.regularMaterial)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(tint)
+            }
+    }
+
+    private func tableHeaderCell(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 6)
+    }
+
+    private func distributionRow(_ row: DigitDeviationRow, index: Int) -> some View {
+        HStack(spacing: 0) {
+            distributionCell("\(row.digit)")
+            distributionCell(percent(row.expectedRatio))
+            distributionCell(percent(row.observedRatio))
+            distributionCell(signedPercent(row.deviation), emphasis: row.deviation >= 0 ? .positive : .negative)
+        }
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(index.isMultiple(of: 2) ? Color.primary.opacity(0.05) : Color.primary.opacity(0.022))
+        )
+    }
+
+    private func distributionCell(_ text: String, emphasis: CellEmphasis = .normal) -> some View {
+        Text(text)
+            .font(.system(.body, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(emphasis.color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+    }
+
+    private func subtleDivider(vertical: Bool = false) -> some View {
+        Capsule()
+            .fill(Color.primary.opacity(0.07))
+            .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+            .frame(maxHeight: vertical ? .infinity : nil)
+            .padding(vertical ? .vertical : .horizontal, 2)
     }
 }
 
@@ -504,4 +666,22 @@ private struct ConclusionPresentation {
     let message: String
     let tint: Color
     let badgeText: String
+    let symbol: String
+}
+
+private enum CellEmphasis {
+    case normal
+    case positive
+    case negative
+
+    var color: Color {
+        switch self {
+        case .normal:
+            return .primary
+        case .positive:
+            return Color(red: 0.16, green: 0.56, blue: 0.38)
+        case .negative:
+            return Color(red: 0.78, green: 0.31, blue: 0.29)
+        }
+    }
 }

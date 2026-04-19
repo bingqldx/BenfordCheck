@@ -11,8 +11,12 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+ICON_SOURCE="$ROOT_DIR/Assets/AppIconSource.png"
+ICONSET_DIR="$DIST_DIR/AppIcon.iconset"
+ICON_FILE="$APP_RESOURCES/AppIcon.icns"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -21,8 +25,42 @@ BUILD_BINARY="$(swift build --show-bin-path)/$APP_NAME"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS"
+mkdir -p "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+ICON_PLIST_BLOCK=""
+
+if [[ -f "$ICON_SOURCE" ]]; then
+  rm -rf "$ICONSET_DIR"
+  mkdir -p "$ICONSET_DIR"
+
+  build_icon_png() {
+    local size="$1"
+    local name="$2"
+    sips -z "$size" "$size" "$ICON_SOURCE" --out "$ICONSET_DIR/$name" >/dev/null
+  }
+
+  build_icon_png 16 icon_16x16.png
+  build_icon_png 32 icon_16x16@2x.png
+  build_icon_png 32 icon_32x32.png
+  build_icon_png 64 icon_32x32@2x.png
+  build_icon_png 128 icon_128x128.png
+  build_icon_png 256 icon_128x128@2x.png
+  build_icon_png 256 icon_256x256.png
+  build_icon_png 512 icon_256x256@2x.png
+  build_icon_png 512 icon_512x512.png
+  build_icon_png 1024 icon_512x512@2x.png
+
+  iconutil -c icns "$ICONSET_DIR" -o "$ICON_FILE"
+  rm -rf "$ICONSET_DIR"
+
+  ICON_PLIST_BLOCK=$(cat <<'PLIST'
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+PLIST
+)
+fi
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -35,8 +73,11 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$BUNDLE_ID</string>
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key>
+  <string>$APP_NAME</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  $ICON_PLIST_BLOCK
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>NSPrincipalClass</key>
