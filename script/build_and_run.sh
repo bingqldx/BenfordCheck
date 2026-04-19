@@ -5,6 +5,9 @@ MODE="${1:-run}"
 APP_NAME="BenfordCheck"
 BUNDLE_ID="com.icecream-mac.BenfordCheck"
 MIN_SYSTEM_VERSION="15.0"
+APP_VERSION="${APP_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo v0.0.0)}"
+SHORT_VERSION="${APP_VERSION#v}"
+BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -77,6 +80,10 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$APP_NAME</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>$SHORT_VERSION</string>
+  <key>CFBundleVersion</key>
+  <string>$BUILD_NUMBER</string>
   $ICON_PLIST_BLOCK
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
@@ -110,8 +117,10 @@ case "$MODE" in
     sleep 1
     pgrep -x "$APP_NAME" >/dev/null
     ;;
+  --bundle|bundle)
+    ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--bundle]" >&2
     exit 2
     ;;
 esac
