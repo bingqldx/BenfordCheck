@@ -1,0 +1,7 @@
+sample	A	B	C	D	E	F
+row_1	1	2		NA	foo	0
+row_2	-3.5	4.2e3	NULL	bar	7	9
+row_3	baz		12	0	NaN	-0.045
+row_4	15	16	17	18	text	NULL
+row_5		0	-200	alpha	5.6e-7	8
+row_6	TRUE	FALSE	999		n/a	1001

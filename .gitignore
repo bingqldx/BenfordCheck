@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode build products
+DerivedData/
+build/
+
+# Xcode user data
+xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Logs and temporary outputs
+*.log
+logs/
+tmp/
+temp/
+dist/
+outputs/
