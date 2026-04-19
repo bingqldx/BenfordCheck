@@ -27,12 +27,6 @@ struct ContentView: View {
                     summarySection(outcome: outcome)
                     if let result = outcome.result {
                         chartSection(result: result)
-                    } else {
-                        messageCard(
-                            title: "没有可计算样本",
-                            message: "这个表格里没有非零数值可以参与 Benford 检测，请检查是否整张表都是空白、文本或零值。",
-                            tint: .orange
-                        )
                     }
                 } else if case .idle = viewModel.status {
                     messageCard(
@@ -43,7 +37,8 @@ struct ContentView: View {
                 }
             }
             .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 1120, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .background(
             LinearGradient(
@@ -76,35 +71,26 @@ struct ContentView: View {
             Text("Benford 定律快速检测")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
 
-            Text("一次导入一个表格，把整张数值矩阵作为一个整体进行检测。支持自动排除空白、缺失和非数值单元格。")
+            Text(heroSubtitle)
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 14) {
-                Button("选择文件") {
-                    viewModel.presentImporter()
-                }
-                .buttonStyle(.borderedProminent)
-
-                Text(viewModel.importedFileName.isEmpty ? "尚未选择文件" : "当前文件：\(viewModel.importedFileName)")
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            if usesCompactImporter {
+                compactImporterPanel
+            } else {
+                expandedImporterPanel
             }
-
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(viewModel.isDropTargeted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-                .overlay(dropZoneOverlay)
-                .frame(height: 160)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(viewModel.isDropTargeted ? Color.accentColor : Color.clear, lineWidth: 2)
-                )
-                .onDrop(of: [.fileURL], isTargeted: $viewModel.isDropTargeted) { providers in
-                    viewModel.handleDroppedProviders(providers)
-                }
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(viewModel.isDropTargeted ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 2)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onDrop(of: [.fileURL], isTargeted: $viewModel.isDropTargeted) { providers in
+            viewModel.handleDroppedProviders(providers)
+        }
     }
 
     private var sheetSelectionSection: some View {
@@ -149,25 +135,39 @@ struct ContentView: View {
     private func summarySection(outcome: AnalysisOutcome) -> some View {
         let summary = outcome.summary
         let items = [
-            SummaryItem(title: "缺失单元格", value: "\(summary.missingCellCount)"),
-            SummaryItem(title: "非数值单元格", value: "\(summary.nonNumericCellCount)"),
-            SummaryItem(title: "数值单元格", value: "\(summary.numericCellCount)"),
-            SummaryItem(title: "零值排除", value: "\(summary.zeroExcludedCount)"),
-            SummaryItem(title: "Benford 样本数", value: "\(summary.benfordSampleCount)"),
-            SummaryItem(title: "矩阵尺寸", value: "\(summary.rowCount) × \(summary.columnCount)"),
+            SummaryItem(title: "缺失单元格", value: formattedCount(summary.missingCellCount)),
+            SummaryItem(title: "非数值单元格", value: formattedCount(summary.nonNumericCellCount)),
+            SummaryItem(title: "数值单元格", value: formattedCount(summary.numericCellCount)),
+            SummaryItem(title: "零值排除", value: formattedCount(summary.zeroExcludedCount)),
+            SummaryItem(title: "Benford 样本数", value: formattedCount(summary.benfordSampleCount)),
+            SummaryItem(title: "矩阵尺寸", value: "\(formattedCount(summary.rowCount)) × \(formattedCount(summary.columnCount))"),
         ]
+        let conclusion = conclusionPresentation(for: outcome)
 
         return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center) {
-                Text("检测摘要")
-                    .font(.headline)
-                Spacer()
-                if let result = outcome.result {
-                    statusBadge(result.status)
-                } else {
-                    statusBadgeText("无可用样本", color: .orange)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("检测结论")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(conclusion.title)
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundStyle(conclusion.tint)
+                        Text(conclusion.message)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 16)
+                    statusBadgeText(conclusion.badgeText, color: conclusion.tint)
                 }
             }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(conclusion.tint.opacity(0.08))
+            )
 
             LazyVGrid(
                 columns: [
@@ -193,16 +193,10 @@ struct ContentView: View {
             }
 
             if let result = outcome.result {
-                HStack(spacing: 20) {
-                    metricCallout(label: "MAD", value: number(result.mad, digits: 4))
-                    metricCallout(label: "卡方", value: number(result.chiSquare, digits: 3))
-                    metricCallout(label: "p 值", value: number(result.pValue, digits: 4))
-                }
-
-                if result.pValue < 0.05 {
-                    Text("统计警示：卡方检验 p < 0.05，说明观测分布与 Benford 期望分布存在显著差异。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    metricCallout(label: "MAD", value: fixedNumber(result.mad, digits: 4))
+                    metricCallout(label: "卡方统计量", value: fixedNumber(result.chiSquare, digits: 3))
+                    metricCallout(label: "p 值", value: fixedNumber(result.pValue, digits: 4))
                 }
             }
         }
@@ -238,10 +232,10 @@ struct ContentView: View {
 
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                 GridRow {
-                    headerCell("Digit")
-                    headerCell("Expected%")
-                    headerCell("Observed%")
-                    headerCell("Deviation%")
+                    headerCell("首位数字")
+                    headerCell("理论占比")
+                    headerCell("实际占比")
+                    headerCell("偏差")
                 }
                 ForEach(viewModel.digitRows) { row in
                     GridRow {
@@ -289,6 +283,12 @@ struct ContentView: View {
             Text(value)
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
     }
 
     private func messageCard(title: String, message: String, tint: Color) -> some View {
@@ -335,19 +335,160 @@ struct ContentView: View {
     }
 
     private func percent(_ value: Double) -> String {
-        number(value * 100, digits: 2) + "%"
+        fixedNumber(value * 100, digits: 2) + "%"
     }
 
     private func signedPercent(_ value: Double) -> String {
-        let formatted = number(abs(value) * 100, digits: 2) + "%"
+        let formatted = fixedNumber(abs(value) * 100, digits: 2) + "%"
         return value >= 0 ? "+\(formatted)" : "-\(formatted)"
     }
 
-    private func number(_ value: Double, digits: Int) -> String {
+    private func fixedNumber(_ value: Double, digits: Int) -> String {
         value.formatted(
             .number
-                .precision(.fractionLength(0 ... digits))
+                .precision(.fractionLength(digits ... digits))
         )
+    }
+
+    private func formattedCount(_ value: Int) -> String {
+        value.formatted(.number.grouping(.automatic))
+    }
+
+    private var usesCompactImporter: Bool {
+        !viewModel.importedFileName.isEmpty
+    }
+
+    private var heroSubtitle: String {
+        usesCompactImporter
+            ? "当前结果始终基于整张矩阵一次性计算，不按列拆分。你也可以直接拖入新文件覆盖当前结果。"
+            : "一次导入一个表格，把整张数值矩阵作为一个整体进行检测。支持自动排除空白、缺失和非数值单元格。"
+    }
+
+    private var expandedImporterPanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                Button("选择文件") {
+                    viewModel.presentImporter()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text("尚未选择文件")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(viewModel.isDropTargeted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                .overlay(dropZoneOverlay)
+                .frame(height: 160)
+        }
+    }
+
+    private var compactImporterPanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 16) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 48, height: 48)
+                    .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("当前文件")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(viewModel.importedFileName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(compactImporterCaption)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 16)
+
+                Button("更换文件") {
+                    viewModel.presentImporter()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            HStack(spacing: 8) {
+                featureTag("整体矩阵一次计算")
+                featureTag("导入后自动更新结果")
+                featureTag("支持拖拽替换")
+            }
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
+    }
+
+    private var compactImporterCaption: String {
+        if let outcome = viewModel.outcome {
+            return "已扫描 \(formattedCount(outcome.summary.totalCellCount)) 个单元格，Benford 样本 \(formattedCount(outcome.summary.benfordSampleCount)) 个。"
+        }
+
+        switch viewModel.status {
+        case .selectingSheet:
+            return "这是一个多工作表 xlsx，请先选择要分析的工作表。"
+        case .scanning:
+            return viewModel.scanStage.isEmpty ? "正在分析整张矩阵，请稍候。" : viewModel.scanStage
+        case .failed:
+            return "你可以直接更换文件继续分析。"
+        default:
+            return "会把整张矩阵作为一个整体分析，不按列拆分。"
+        }
+    }
+
+    private func featureTag(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.primary.opacity(0.06), in: Capsule())
+            .foregroundStyle(.secondary)
+    }
+
+    private func conclusionPresentation(for outcome: AnalysisOutcome) -> ConclusionPresentation {
+        guard let result = outcome.result else {
+            return ConclusionPresentation(
+                title: "没有可用于 Benford 检测的非零数值",
+                message: "这张表已经完成摘要统计，但没有可参与 Benford 计算的非零数值，因此当前不能给出“符合 / 不符合”的统计结论。",
+                tint: .orange,
+                badgeText: "无可用样本"
+            )
+        }
+
+        let stats = "MAD \(fixedNumber(result.mad, digits: 4))，卡方统计量 \(fixedNumber(result.chiSquare, digits: 3))，p 值 \(fixedNumber(result.pValue, digits: 4))。"
+        let chiSquareMessage = result.pValue < 0.05 ? "卡方检验给出了统计警示。" : "卡方检验未提示显著异常。"
+
+        switch result.status {
+        case .conforms:
+            return ConclusionPresentation(
+                title: "整体符合 Benford 定律",
+                message: "\(stats) 当前样本的首位数字分布与理论分布非常接近，\(chiSquareMessage)",
+                tint: .green,
+                badgeText: "符合"
+            )
+        case .borderline:
+            return ConclusionPresentation(
+                title: "当前结果处于边界状态",
+                message: "\(stats) 当前样本接近阈值，建议结合业务背景和数据来源一起复核。\(chiSquareMessage)",
+                tint: .orange,
+                badgeText: "边界"
+            )
+        case .nonConforms:
+            return ConclusionPresentation(
+                title: "整体偏离 Benford 定律",
+                message: "\(stats) 当前样本与理论分布差异较大，建议进一步检查数据来源、口径和异常值。\(chiSquareMessage)",
+                tint: .red,
+                badgeText: "不符合"
+            )
+        }
     }
 }
 
@@ -356,4 +497,11 @@ private struct SummaryItem: Identifiable {
     let value: String
 
     var id: String { title }
+}
+
+private struct ConclusionPresentation {
+    let title: String
+    let message: String
+    let tint: Color
+    let badgeText: String
 }
