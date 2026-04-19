@@ -14,6 +14,9 @@ xcuserdata/
 .build/
 .swiftpm/
 
+# Local Codex environment config
+.codex/environments/
+
 # Logs and temporary outputs
 *.log
 logs/
