@@ -4,6 +4,8 @@
 
 Native macOS app for fast Benford law checks on spreadsheet-style datasets.
 
+<img src="Assets/README/app-icon-showcase.png" width="180" alt="BenfordCheck app icon">
+
 <p>
   <a href="https://github.com/bingqldx/BenfordCheck/releases">
     <img src="https://img.shields.io/github/v/release/bingqldx/BenfordCheck?display_name=tag&style=flat-square" alt="Latest release">
@@ -14,7 +16,7 @@ Native macOS app for fast Benford law checks on spreadsheet-style datasets.
 </p>
 
 <p>
-  <a href="https://github.com/bingqldx/BenfordCheck/releases/download/v0.5.1/BenfordCheck-v0.5.1.dmg">Download DMG</a>
+  <a href="https://github.com/bingqldx/BenfordCheck/releases/download/v0.5.2/BenfordCheck-v0.5.2.dmg">Download DMG</a>
   ·
   <a href="https://github.com/bingqldx/BenfordCheck/releases">Releases</a>
   ·
@@ -28,6 +30,12 @@ BenfordCheck 用来回答一个很具体的问题：
 > 这张表里的整体数值分布，是否接近 Benford 定律？
 
 它会把导入文件中的整张数值矩阵作为一个总体一次性分析，不按列拆分；同时自动汇总缺失单元格、非数值单元格、零值排除数量和最终进入计算的样本数，并用图表直观展示 `1-9` 首位数字偏差。
+
+## 产品预览
+
+<p align="center">
+  <img src="Assets/README/screenshots-strip.png" alt="BenfordCheck screenshots" width="100%">
+</p>
 
 ## 为什么做这个工具
 
@@ -91,14 +99,15 @@ BenfordCheck 的目标就是把这条链路压缩成一个原生 Mac 工具：
 ### 当前发行版
 
 - Release 页面：[BenfordCheck Releases](https://github.com/bingqldx/BenfordCheck/releases)
-- 当前版本：[`v0.5.1`](https://github.com/bingqldx/BenfordCheck/releases/tag/v0.5.1)
-- 直接下载：[BenfordCheck-v0.5.1.dmg](https://github.com/bingqldx/BenfordCheck/releases/download/v0.5.1/BenfordCheck-v0.5.1.dmg)
+- 当前版本：[`v0.5.2`](https://github.com/bingqldx/BenfordCheck/releases/tag/v0.5.2)
+- 直接下载：[BenfordCheck-v0.5.2.dmg](https://github.com/bingqldx/BenfordCheck/releases/download/v0.5.2/BenfordCheck-v0.5.2.dmg)
 
 ### 安装步骤
 
 1. 下载 `DMG`
 2. 打开镜像
 3. 将 `BenfordCheck.app` 拖入 `Applications`
+4. 如果首次打开被拦截，到 `系统设置 -> 隐私与安全性` 中选择 `仍要打开 / Open Anyway`
 
 > 当前发布包尚未签名和 notarize，所以在其他 Mac 上首次打开时，Gatekeeper 可能会提示安全警告。
 
@@ -130,7 +139,7 @@ BenfordCheck 的目标就是把这条链路压缩成一个原生 Mac 工具：
 swift test
 ./script/build_and_run.sh
 ./script/build_and_run.sh --verify
-./script/package_release_dmg.sh v0.5.1
+./script/package_release_dmg.sh v0.5.2
 ```
 
 ## 项目结构
@@ -165,3 +174,4 @@ script/                                  build and release scripts
 
 - `v0.5.0`：UI 美学优化、图标接入、结果页层级收敛
 - `v0.5.1`：加入 DMG 打包与 GitHub Release 发布链路
+- `v0.5.2`：修复发布包签名结构问题，更新安装放行说明
