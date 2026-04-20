@@ -20,6 +20,7 @@ INFO_PLIST="$APP_CONTENTS/Info.plist"
 ICON_SOURCE="$ROOT_DIR/Assets/AppIconSource.png"
 ICONSET_DIR="$DIST_DIR/AppIcon.iconset"
 ICON_FILE="$APP_RESOURCES/AppIcon.icns"
+SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:-}"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -31,6 +32,7 @@ mkdir -p "$APP_MACOS"
 mkdir -p "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+codesign --remove-signature "$APP_BINARY" >/dev/null 2>&1 || true
 
 ICON_PLIST_BLOCK=""
 
@@ -92,6 +94,18 @@ cat >"$INFO_PLIST" <<PLIST
 </dict>
 </plist>
 PLIST
+
+sign_app_bundle() {
+  if [[ -n "$SIGN_IDENTITY" ]]; then
+    codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+  else
+    codesign --force --deep --sign - "$APP_BUNDLE"
+  fi
+
+  codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE" >/dev/null
+}
+
+sign_app_bundle
 
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"

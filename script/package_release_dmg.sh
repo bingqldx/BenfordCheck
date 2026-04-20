@@ -20,11 +20,6 @@ mkdir -p "$RELEASE_DIR"
 
 APP_VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" "$ROOT_DIR/script/build_and_run.sh" --bundle
 
-if [[ -n "$SIGN_IDENTITY" ]]; then
-  codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
-  codesign --verify --deep --strict "$APP_BUNDLE"
-fi
-
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 
