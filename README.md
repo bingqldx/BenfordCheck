@@ -1,10 +1,10 @@
 <div align="center">
 
+<img src="Assets/README/app-icon-showcase.png" width="132" alt="BenfordCheck app icon">
+
 # BenfordCheck
 
 Native macOS app for fast Benford law checks on spreadsheet-style datasets.
-
-<img src="Assets/README/app-icon-showcase.png" width="180" alt="BenfordCheck app icon">
 
 <p>
   <a href="https://github.com/bingqldx/BenfordCheck/releases">
